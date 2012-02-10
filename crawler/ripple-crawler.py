@@ -6,7 +6,10 @@ import time
 import logging
 from optparse import OptionParser
 import MySQLdb
+import Queue
 
+
+WORK_QUEUE = 'ripple-crawler'
 CONSUMER_KEY = 'k2hL6ySpFuQmHalJvNfJA'
 CONSUMER_SECRET = 'E2R7zNbFNsCNo7GzshImADFhjz8cDVhQSWDRG2ceH8'
 ACCESS_KEY = '80157513-xrvAvUgPtodmMkUEYHWO1pDxztN1urQNHWcZUQDUE'
@@ -20,7 +23,7 @@ def objdump (obj):
         print "obj.%s = %s" % (attr, getattr(obj, attr))
 
 #----------------------------------------
-def configureLogging (logger):
+def initLogging (logger):
 #----------------------------------------
     logger = logging.getLogger('ripple-crawler')
     logger.setLevel (logging.DEBUG)
@@ -45,33 +48,65 @@ def userToString (user):
 
 
 #----------------------------------------
-def processFollower (user, follower):
+def processFollower (followee, follower):
 #----------------------------------------
-    rc = 1
-    try:
-        con = MySQLdb.Connection ("localhost","justin","zinkwazi","ripple", charset = "utf8", use_unicode = True) 
-        cursor = con.cursor ()
-        cursor.execute("""INSERT INTO User (id, name, screen_name, followers_count, friends_count, statuses_count) VALUES (%(id)s, %(name)s, %(screen_name)s, %(followers_count)s, %(friends_count)s, '%(statuses_count)s')""", follower.__dict__)
-        con.commit ()
-        con.close ()
-        rc = 0
+    con = MySQLdb.Connection ("localhost","justin","zinkwazi","ripple", charset = "utf8", use_unicode = True) 
+    cursor = con.cursor ()
+
+    try:        
+        cursor.execute("""INSERT INTO User (id, name, screen_name, followers_count, friends_count, statuses_count) VALUES (%(id)s, %(name)s, %(screen_name)s, %(followers_count)s, %(friends_count)s, '%(statuses_count)s')""", 
+                       follower.__dict__)
+       
     except MySQLdb.Error, e:
         if ( e.args[0] == 1062 ):
-            LOG.info ("Ignoring duplicate user: %s" % (userToString(follower)))
+            LOG.info ("Ignoring duplicate user: %s" % (follower.screen_name))
         else:
             LOG.error ("Caught MySQLdb.Error %d: %s" % (e.args[0], e.args[1]))
+            if con.open:
+                con.commit ()
+                con.close ()
+            raise
+
+    try:
+        if ( followee is not None ):
+            cursor.execute("""INSERT INTO Follower (followee_id, follower_id) VALUES (%s, %s)""", 
+                           (followee.id, follower.id))
+    except MySQLdb.Error, e:
+        if ( e.args[0] == 1062 ):
+            LOG.info ("Ignoring duplicate %s follower %s" % (followee.screen_name, follower.screen_name))
+        else:
+            LOG.error ("Caught MySQLdb.Error %d: %s" % (e.args[0], e.args[1]))
+            raise
     finally:
         if con.open:
+            con.commit ()
             con.close ()
 
-    return rc
 
+#----------------------------------------
+def initWorkQueue ():
+#----------------------------------------
+    return Queue.Queue()
+
+
+#----------------------------------------
+def enqueueWork (queue, item):
+#----------------------------------------
+    queue.put (item)
+    
+
+#----------------------------------------
+def dequeueWork (queue):
+#----------------------------------------
+    return queue.get ()
+    
 
 #----------------------------------------
 # Main
 #----------------------------------------
 LOG = logging.getLogger('ripple-crawler')
-configureLogging (LOG)
+initLogging (LOG)
+QUEUE = initWorkQueue ()
 
 
 # Command line options
@@ -82,47 +117,68 @@ parser.add_option ("-u", "--user", dest="initial_user", help="Id or screen name 
 if options.initial_user is None:
     parser.error ("Initial user is required")
     sys.exit (1)
-else:
-    user = options.initial_user
-
 
 # Twitter authentication
 auth = tweepy.OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
 auth.set_access_token(ACCESS_KEY, ACCESS_SECRET)
 api = tweepy.API(auth)
 LOG.info ("Authenticated with Twitter API")
-LOG.debug ("Starting graph traversal from user %s" % options.initial_user);
+LOG.info ("Starting graph traversal from user %s" % options.initial_user);
+enqueueWork (QUEUE, options.initial_user)
 
 
-# Main loop
-count = 1
-follower_cursors = tweepy.Cursor (api.followers, id = user)
-followers_iter = follower_cursors.items()
-follower = None
+# BEGIN Main Loop
 while True:
-    try:
-        # We may have to retry a failed
-        if ( follower is None ):
-            follower = followers_iter.next()
-        LOG.debug ("Adding %s follower #%d %s" % (user, count, follower.screen_name))
-        rc = processFollower (user, follower)
-        if ( rc == 0 ):
-            follower = None
-            count += 1
-
-    except StopIteration:
-        break
-    except tweepy.error.TweepError as (err):
-        LOG.error ("Caught TweepError: %s" % (err))
-        limit = api.rate_limit_status()
-        if (limit['remaining_hits'] == 0):
-            seconds_until_reset = int (limit['reset_time_in_seconds'] - time.time())
-            LOG.info ("API request limit reached. Sleeping for %s seconds" % seconds_until_reset)
-            time.sleep (seconds_until_reset + 5)
-        else:
+    # Fetch next user from queue
+    user_id = dequeueWork (QUEUE)
+    LOG.info ("Dequeued user id %s" % (user_id))
+    while True:
+        try:
+            user = api.get_user (user_id)
+            break
+        except tweepy.error.TweepError as (err):
+            LOG.error ("Caught TweepError getting user: %s" % (err))
             LOG.info ("Sleeping a few seconds and then retrying")
             time.sleep (5)
 
+    LOG.info ("Processing user %s" % (userToString(user)))
+    processFollower (None, user)
+    
+    # Follower loop
+    count = 1
+    follower_cursors = tweepy.Cursor (api.followers, id = user.id)
+    followers_iter = follower_cursors.items()
+    follower = None
+    while True:
+        try:
+            # We may have to retry a failed
+            if ( follower is None ):
+                follower = followers_iter.next()
+                LOG.debug ("Adding %s follower #%d %s" % (user.screen_name, count, follower.screen_name))
+                processFollower (user, follower)
+                enqueueWork (QUEUE, follower.screen_name)
+                follower = None
+                count += 1
+                
+        except StopIteration:
+            break
+        except MySQLdb.Error, e:
+            LOG.error ("Caught MySQLdb.Error %d: %s" % (e.args[0], e.args[1]))
+        except tweepy.error.TweepError as (err):
+            LOG.error ("Caught TweepError: %s" % (err))
+            if (err.reason == "Not authorized" ):
+                LOG.info ("Not authorized to see users followers. Skipping.")
+                break
+            limit = api.rate_limit_status()
+            if (limit['remaining_hits'] == 0):
+                seconds_until_reset = int (limit['reset_time_in_seconds'] - time.time())
+                LOG.info ("API request limit reached. Sleeping for %s seconds" % seconds_until_reset)
+                time.sleep (seconds_until_reset + 5)
+            else:
+                LOG.info ("Sleeping a few seconds and then retrying")
+                time.sleep (5)
+
+# END Main Loop
                 
                 
                 
