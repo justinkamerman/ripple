@@ -151,7 +151,7 @@ while True:
     follower = None
     while True:
         try:
-            # We may have to retry a failed
+            # We may have to retry a failed follower lookup
             if ( follower is None ):
                 follower = followers_iter.next()
                 LOG.debug ("Adding %s follower #%d %s" % (user.screen_name, count, follower.screen_name))

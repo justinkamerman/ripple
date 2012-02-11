@@ -10,9 +10,9 @@ CREATE TABLE User (
 ) ENGINE=InnoDB;
 
 # Create Followers table
-CREATE TABLE Followers (
-       follower_id      INT NOT NULL,
+CREATE TABLE Follower (
        followee_id      INT NOT NULL,
+       follower_id      INT NOT NULL,
        UNIQUE (follower_id, followee_id)
 ) ENGINE=InnoDB;
 
