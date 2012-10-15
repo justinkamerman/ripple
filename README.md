@@ -18,3 +18,4 @@ factor in order to converge towards more meaningful values.
 Included are R scripts to analyse results, SQL DDL scripts, and a 
 MapReduce job to generate adjacency lists from raw cralwer data.
 
+[![Followers Histogram](https://github.com/justinkamerman/Ripple/raw/master/images/followershist.png)](https://github.com/justinkamerman/Ripple/raw/master/images/followershist.png)
