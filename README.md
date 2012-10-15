@@ -19,3 +19,19 @@ Included are R scripts to analyse results, SQL DDL scripts, and a
 MapReduce job to generate adjacency lists from raw cralwer data.
 
 [![Followers Histogram](https://github.com/justinkamerman/Ripple/raw/master/images/followershist.png)](https://github.com/justinkamerman/Ripple/raw/master/images/followershist.png)
+
+[![Friends Histogram](https://github.com/justinkamerman/Ripple/raw/master/images/friendshist.png)](https://github.com/justinkamerman/Ripple/raw/master/images/friendshist.png)
+
+[![followersfriendspagerank](https://github.com/justinkamerman/Ripple/raw/master/images/followersfriendspagerank.png)](https://github.com/justinkamerman/Ripple/raw/master/images/followersfriendspagerank.png)
+
+[![followerspagerank](https://github.com/justinkamerman/Ripple/raw/master/images/followerspagerank.png)](https://github.com/justinkamerman/Ripple/raw/master/images/followerspagerank.png)
+
+[![friendspagerank](https://github.com/justinkamerman/Ripple/raw/master/images/friendspagerank.png)](https://github.com/justinkamerman/Ripple/raw/master/images/friendspagerank.png)
+
+[![statusespagerank](https://github.com/justinkamerman/Ripple/raw/master/images/statusespagerank.png)](https://github.com/justinkamerman/Ripple/raw/master/images/statusespagerank.png)
+
+[![difffriendsfollowers](https://github.com/justinkamerman/Ripple/raw/master/images/difffriendsfollowers.png)](https://github.com/justinkamerman/Ripple/raw/master/images/difffriendsfollowers.png)
+
+[![pagerankiterations](https://github.com/justinkamerman/Ripple/raw/master/images/pagerankiterations.png)](https://github.com/justinkamerman/Ripple/raw/master/images/pagerankiterations.png)
+
+[![rankadjustment](https://github.com/justinkamerman/Ripple/raw/master/images/rankadjustment.png)](https://github.com/justinkamerman/Ripple/raw/master/images/rankadjustment.png)
