@@ -1,8 +1,8 @@
-Twitter PageRanks
-=================
+Twitter PageRank
+================
 
 A MapReduce calculation of PageRank applied to the Twitter
-social-graph. Social-graph sample generated via a crawler, using
+social-graph. Social-graph sampled via a crawler, using the
 Twitter REST API. The crawler performs a breadth first traversal of
 the Twitter graph starting at an arbitrary user node and storing
 connections in a MySQL database schema.  A simplified PageRank
@@ -15,6 +15,6 @@ distribution of zero if allowed to run for too many iterations. A more
 in-depth analysis would have to include a some analogous damping
 factor in order to converge towards more meaningful values.
 
-Included are R scripts to analyse results and to generate adjacency
-lists from raw cralwer data.
+Included are R scripts to analyse results, SQL DDL scripts, and a 
+MapReduce job to generate adjacency lists from raw cralwer data.
 
